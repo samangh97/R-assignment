@@ -440,5 +440,54 @@ ggplot(long_data, aes(x = Group, y = Proportion, fill = Category)) +
   theme_minimal()
   
 #my own visualization
+#allele frequency
+# Load required packages
+library(dplyr)
+library(ggplot2)
+library(tidyr)
 
+# Read the genotype file
+genotype_data <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+
+# Split into maize and teosinte based on column 3
+maize_data <- genotype_data[genotype_data[[3]] %in% c("ZMMIL", "ZMMLR", "ZMMMR"), ]
+teosinte_data <- genotype_data[genotype_data[[3]] %in% c("ZMPBA", "ZMPIL", "ZMPJA"), ]
+
+# Reshape data using pivot_longer to make it "tidy"
+tidy_maize <- maize_data %>%
+  pivot_longer(cols = 4:ncol(maize_data), names_to = "SNP", values_to = "Genotype") %>%
+  mutate(Group = "Maize")
+
+tidy_teosinte <- teosinte_data %>%
+  pivot_longer(cols = 4:ncol(teosinte_data), names_to = "SNP", values_to = "Genotype") %>%
+  mutate(Group = "Teosinte")
+
+# Combine datasets
+tidy_data <- bind_rows(tidy_maize, tidy_teosinte)
+
+# Extract individual alleles (first and second base in genotype calls)
+tidy_data <- tidy_data %>%
+  filter(Genotype != "?/?") %>%  # Remove missing data
+  mutate(Allele1 = substr(Genotype, 1, 1),
+         Allele2 = substr(Genotype, 3, 3))
+
+# Gather alleles into a single column (normalize format)
+tidy_alleles <- tidy_data %>%
+  select(Group, SNP, Allele1, Allele2) %>%
+  pivot_longer(cols = c("Allele1", "Allele2"), names_to = "Allele_Position", values_to = "Allele")
+
+# Compute allele frequencies
+allele_frequencies <- tidy_alleles %>%
+  group_by(Group, Allele) %>%
+  summarise(Frequency = n(), .groups = "drop") %>%
+  mutate(Proportion = Frequency / sum(Frequency))  # Normalize frequencies
+
+# Plot allele frequency distribution
+ggplot(allele_frequencies, aes(x = Allele, y = Proportion, fill = Group)) +
+  geom_bar(stat = "identity", position = "dodge") +  # Side-by-side bars
+  labs(title = "Allele Frequency Differences in Maize and Teosinte",
+       x = "Allele", y = "Proportion") +
+  scale_fill_manual(values = c("Maize" = "cornflowerblue", "Teosinte" = "forestgreen")) +
+  theme_minimal()
+        
         
