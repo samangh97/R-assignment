@@ -438,5 +438,7 @@ ggplot(long_data, aes(x = Group, y = Proportion, fill = Category)) +
        x = "Group", y = "Proportion") +
   scale_fill_manual(values = c("Missing" = "gray", "Homozygous" = "blue", "Heterozygous" = "red")) +
   theme_minimal()
+  
+#my own visualization
 
-
+        
