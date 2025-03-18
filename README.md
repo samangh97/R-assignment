@@ -2,56 +2,59 @@
 # Read the files and store them in variables
 fang_data <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 snp_data <- read.table("snp_position.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-# Inspect dimensions of the data
+# Inspect dimensions and size of the data
 dim(fang_data)  # Dimensions of the fang_et_al_genotypes data
 dim(snp_data)   # Dimensions of the snp_position data
+fang_file_size <- file.size("fang_et_al_genotypes.txt")
+snp_file_size <- file.size("snp_position.txt")
+fang_file_size_kb <- fang_file_size / 1024
+snp_file_size_kb <- snp_file_size / 1024
+cat("File size of fang_et_al_genotypes.txt:", fang_file_size, "bytes (", fang_file_size_kb, "KB)\n")
+cat("File size of snp_position.txt:", snp_file_size, "bytes (", snp_file_size_kb, "KB)\n")
+#maize data processing 
+# Read the files and store them in variables
+fang_data <- read.table("fang_et_al_genotypes.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
+snp_data <- read.table("snp_position.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
 # Transpose the fang_et_al_genotypes data
+print("Transposing fang data...")
 transposed_genotypes <- t(fang_data)
-
 transposed_genotypes <- as.data.frame(transposed_genotypes)
 write.table(transposed_genotypes, file = "transposed_genotypes.txt", sep = "\t", row.names = TRUE, col.names = FALSE, quote = FALSE)
 
-# Read the file
+# Read and modify snp_position file
 snp_lines <- readLines("snp_position.txt")
-
-# Extract the header and add two blank lines
 header <- snp_lines[1]
 modified_lines <- c(header, "", "", snp_lines[-1])
-
-# Write the modified content to a new file
 writeLines(modified_lines, "snp_position_mod.txt")
-# Read the input file
+
+# Read the transposed data
 transposed_genotypes <- read.table("transposed_genotypes.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
-# Identify columns to keep based on the 3rd row
+
+# Identify columns to keep (maize categories: ZMMLR, ZMMIL, ZMMMR)
 cols_to_keep <- which(transposed_genotypes[3, ] %in% c("ZMMLR", "ZMMIL", "ZMMMR"))
-# Subset the data to keep only the marked columns
 maize_data <- transposed_genotypes[, cols_to_keep]
 
-# Save the subsetted data to a new file
+# Save the filtered maize data
 write.table(maize_data, file = "maize.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
-# Read the modified file
+# Read files
 maize_check <- read.table("maize.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
-# Read snp_position_mod.txt
 snp_position <- read.table("snp_position_mod.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
 
-# Read maize.txt
-maize_data <- read.table("maize.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
-# Extract columns 1, 3, and 4
+# Extract relevant SNP columns
 snp_subset <- snp_position[, c(1, 3, 4)]
-# Remove the first two rows from maize_data
-maize_data <- maize_data[-(1:2), ]
-# Combine the subsetted SNP data with maize data
+maize_data <- read.table("maize.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+maize_data <- maize_data[-(1:2), ]  # Remove first two rows
+
+# Merge SNP data with maize genotypes
 maize_joined <- cbind(snp_subset, maize_data)
-# Save the combined data to a new file
 write.table(maize_joined, file = "maize_joined.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
-# Read the modified file
-maize_joined_check <- read.table("maize_joined.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
+
 # Load required package
 library(dplyr)
 
-# Read the data
+# Read the joined data
 maize_data <- read.table("maize_joined.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
 
 # Function to check if a value is numeric
@@ -59,75 +62,40 @@ is_numeric_str <- function(x) {
   !is.na(suppressWarnings(as.numeric(x)))
 }
 
-# Function to process and save each chromosome
+# Function to process and save each chromosome (sorted in increasing order)
 process_chromosome <- function(chrom_num, data) {
-  subset_data <- data[data[[2]] == chrom_num, ]  # Filter by chromosome number
-  
-  # Identify numeric and non-numeric SNP positions
+  print(paste("Processing chromosome", chrom_num, "..."))
+  subset_data <- data[data[[2]] == chrom_num, ]  
   numeric_positions <- sapply(subset_data[[3]], is_numeric_str)
-  
-  # Convert only numeric values to numbers for sorting
   subset_data$SNP_numeric <- as.numeric(subset_data[[3]])
-  
-  # Sort by SNP position (numeric first, "?" last)
   subset_data <- subset_data[order(subset_data$SNP_numeric, na.last = TRUE), ]
-  
-  # Restore original SNP column with "?" for missing values
   subset_data[[3]][!numeric_positions] <- "?"
-  
-  # Remove the extra SNP_numeric column after sorting
-  subset_data$SNP_numeric <- NULL
-  
-  # Define file name
+  subset_data$SNP_numeric <- NULL  
   output_file <- paste0("maize_sortedv1_", chrom_num, ".txt")
-  
-  # Write to file
   write.table(subset_data, output_file, sep = "\t", row.names = FALSE, quote = FALSE)
-  
-  message("File successfully written: ", output_file)
+  print(paste("File successfully written:", output_file))
 }
 
 # Apply function to chromosomes 1 to 10
+print("Processing chromosomes 1 to 10 (increasing order)...")
 lapply(1:10, process_chromosome, data = maize_data)
-
-
-# Read the data
-maize_data <- read.table("maize_joined.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-
-# Function to check if a value is numeric
-is_numeric_str <- function(x) {
-  !is.na(suppressWarnings(as.numeric(x)))
-}
 
 # Function to process and save each chromosome (sorted in decreasing order)
 process_chromosome_desc <- function(chrom_num, data) {
-  subset_data <- data[data[[2]] == chrom_num, ]  # Filter by chromosome number
-  
-  # Identify numeric and non-numeric SNP positions
+  print(paste("Processing chromosome", chrom_num, "(decreasing order)..."))
+  subset_data <- data[data[[2]] == chrom_num, ]  
   numeric_positions <- sapply(subset_data[[3]], is_numeric_str)
-  
-  # Convert only numeric values to numbers for sorting
   subset_data$SNP_numeric <- as.numeric(subset_data[[3]])
-  
-  # Sort by SNP position in decreasing order (numeric first, "-" last)
   subset_data <- subset_data[order(-subset_data$SNP_numeric, na.last = TRUE), ]
-  
-  # Restore original SNP column with "-" for missing values
   subset_data[[3]][!numeric_positions] <- "-"
-
-  # Remove the extra SNP_numeric column after sorting
-  subset_data$SNP_numeric <- NULL
-  
-  # Define file name
+  subset_data$SNP_numeric <- NULL  
   output_file <- paste0("maize_sortedv2_", chrom_num, ".txt")
-  
-  # Write to file
   write.table(subset_data, output_file, sep = "\t", row.names = FALSE, quote = FALSE)
-  
-  message("File successfully written: ", output_file)
+  print(paste("File successfully written:", output_file))
 }
 
 # Apply function to chromosomes 1 to 10
+print("Processing chromosomes 1 to 10 (decreasing order)...")
 lapply(1:10, process_chromosome_desc, data = maize_data)
 #repeating the process for teosinte data
 # Read the files and store them in variables
@@ -142,56 +110,41 @@ write.table(transposed_genotypes, file = "transposed_genotypes.txt", sep = "\t",
 
 
 # Read and modify snp_position file
-print("Modifying snp_position file...")
 snp_lines <- readLines("snp_position.txt")
 header <- snp_lines[1]
 modified_lines <- c(header, "", "", snp_lines[-1])
 writeLines(modified_lines, "snp_position_mod.txt")
 
-
-
 # Read the transposed data
-print("Reading transposed data...")
 transposed_genotypes <- read.table("transposed_genotypes.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
 
 # Identify columns to keep (teosinte categories: ZMPBA, ZMPIL, ZMPJA)
-print("Identifying columns to keep...")
 cols_to_keep <- which(transposed_genotypes[3, ] %in% c("ZMPBA", "ZMPIL", "ZMPJA"))
 teosinte_data <- transposed_genotypes[, cols_to_keep]
 
 
 # Save the filtered teosinte data
-print("Saving teosinte data...")
 write.table(teosinte_data, file = "teosinte.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
-
 # Read files
-print("Reading teosinte and SNP data...")
 teosinte_check <- read.table("teosinte.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
 snp_position <- read.table("snp_position_mod.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
 
 
 # Extract relevant SNP columns
-print("Extracting SNP columns...")
 snp_subset <- snp_position[, c(1, 3, 4)]
 teosinte_data <- read.table("teosinte.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
 teosinte_data <- teosinte_data[-(1:2), ]  # Remove first two rows
 
-
 # Merge SNP data with teosinte genotypes
-print("Merging SNP and teosinte data...")
 teosinte_joined <- cbind(snp_subset, teosinte_data)
 write.table(teosinte_joined, file = "teosinte_joined.txt", sep = "\t", row.names = FALSE, col.names = FALSE, quote = FALSE)
 
 # Load required package
 library(dplyr)
 
-
 # Read the joined data
-print("Reading joined data...")
 teosinte_data <- read.table("teosinte_joined.txt", header = TRUE, sep = "\t", stringsAsFactors = FALSE)
-
-
 
 # Function to check if a value is numeric
 is_numeric_str <- function(x) {
