@@ -121,13 +121,6 @@ transposed_genotypes <- t(fang_data)
 transposed_genotypes <- as.data.frame(transposed_genotypes)
 write.table(transposed_genotypes, file = "transposed_genotypes.txt", sep = "\t", row.names = TRUE, col.names = FALSE, quote = FALSE)
 
-
-# Read and modify snp_position file
-snp_lines <- readLines("snp_position.txt")
-header <- snp_lines[1]
-modified_lines <- c(header, "", "", snp_lines[-1])
-writeLines(modified_lines, "snp_position_mod.txt")
-
 # Read the transposed data
 transposed_genotypes <- read.table("transposed_genotypes.txt", header = FALSE, sep = "\t", stringsAsFactors = FALSE)
 
