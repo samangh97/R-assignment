@@ -1,0 +1,9 @@
+#General Comments:
+I was able to clone your repository. 
+It seems that your code is written outside the R code chunks. So I was not able to run it first. But I just copied the code into the chunk at it ran so perfectly. So I suggest to add your code to the chunk.
+
+#Maize and Teosinte 
+The output files for this section are generated correctly. so you did well in the inspection and processing sections.
+
+#Plots
+Your plots are generated perfectly. But here is a suggestion: you can add unknown and multiple columns in your SNP Counts per Chromosome plot. 
